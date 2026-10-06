@@ -1,0 +1,34 @@
+# --- Secrets & local config ---
+.env
+*.local
+
+# --- Data (never versioned: landing zone, DuckDB warehouse, raw copies) ---
+data/
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.csv
+
+# --- Airflow runtime ---
+logs/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Tool caches ---
+.pytest_cache/
+.ruff_cache/
+
+# --- Assistant instructions (local only) ---
+.claude/
+CLAUDE.md
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

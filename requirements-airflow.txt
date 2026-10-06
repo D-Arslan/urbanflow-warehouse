@@ -1,0 +1,2 @@
+# Extra Python packages installed into the Airflow image (see Dockerfile).
+duckdb==1.5.6
