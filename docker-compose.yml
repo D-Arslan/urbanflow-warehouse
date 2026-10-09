@@ -37,9 +37,9 @@ services:
       interval: 10s
       retries: 5
 
-  airflow-init:                          # one-shot: create/upgrade the metadata schema
+  airflow-init:                          # one-shot: create/upgrade the metadata schema, create pools
     <<: *airflow-common
-    command: db migrate
+    command: ["bash", "-c", "airflow db migrate && airflow pools set duckdb_writer 1 'Single writer for warehouse.duckdb'"]
 
   airflow-apiserver:
     <<: *airflow-common
