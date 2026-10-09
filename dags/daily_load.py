@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS raw.gbfs_station_status (
     is_returning              INTEGER,
     last_reported             BIGINT,              -- epoch seconds, as delivered
     _source_file              VARCHAR   NOT NULL,
-    _loaded_at                TIMESTAMPTZ NOT NULL
+    _loaded_at                TIMESTAMP NOT NULL   -- naive UTC, like _snapshot_at
 );
 """
 
@@ -55,7 +55,7 @@ SELECT
     s.num_bikes_available_types, s.is_installed, s.is_renting, s.is_returning,
     s.last_reported,
     filename,
-    current_timestamp
+    CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 FROM (
     SELECT filename, unnest(data.stations) AS s
     FROM read_json('{pattern}', columns = {{'data': '{stations_type}'}},
