@@ -56,6 +56,19 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
 
+Collection policy: 2026-10-11 is collected as a complete day; after that, collection is
+opportunistic (it runs while the host is on). The reference dataset for analysis remains the
+July 2026 grid.
+
+## Known data quirks
+
+Facts about the source feeds, measured in `raw`; the dbt layer handles them explicitly.
+
+| Quirk | Measured | Handling |
+|---|---|---|
+| `stationCode` null for every station in one `station_status` snapshot | 2026-10-09 08:34: 1519 of 1519 rows | rebuilt in dbt staging from `station_information` (join on `station_id`) |
+| Stations with `capacity = 0` in `station_information` | 2 of 1519 on 2026-10-10 (`21502` Verdun - Place Henri IV, `23404` Bouvier - Carnot); both report `is_installed = 0`, 0 bikes and 0 docks in every snapshot of 2026-10-09/10; `21502` was active in the July grid | the dbt test `bikes + docks <= capacity` runs with `severity: warn` and excludes `capacity = 0` |
+
 ## Data provenance: raw.velib_grid_2026_07
 
 Derived historical backfill, not GBFS snapshots: the 5-minute grid built by UrbanFlow's
