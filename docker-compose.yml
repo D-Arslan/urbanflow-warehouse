@@ -19,6 +19,7 @@ x-airflow-common: &airflow-common
     - ./logs:/opt/airflow/logs
     - ./data:/opt/airflow/data          # landing zone + DuckDB file (gitignored)
   user: "${AIRFLOW_UID:-50000}:0"
+  restart: unless-stopped                # come back after a Docker or host restart
   depends_on: &airflow-depends-on
     airflow-db:
       condition: service_healthy
@@ -26,6 +27,7 @@ x-airflow-common: &airflow-common
 services:
   airflow-db:
     image: postgres:16.13
+    restart: unless-stopped
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
@@ -39,6 +41,7 @@ services:
 
   airflow-init:                          # one-shot: create/upgrade the metadata schema, create pools
     <<: *airflow-common
+    restart: "no"                        # one-shot: must not loop after exiting
     command: ["bash", "-c", "airflow db migrate && airflow pools set duckdb_writer 1 'Single writer for warehouse.duckdb'"]
 
   airflow-apiserver:
