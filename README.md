@@ -4,24 +4,45 @@ Batch data warehouse extending [UrbanFlow](https://github.com/D-Arslan/UrbanFlow
 Vélib' pipeline: Airflow lands GBFS snapshots, DuckDB stores them, dbt models them.
 
 **Status: work in progress.**
-- Sprint 1 (in progress): Airflow 3 (LocalExecutor) and DuckDB in place; `gbfs_snapshot` DAG
-  lands the raw `station_status` feed every 5 minutes into a date-partitioned landing zone.
-- Sprint 2: dbt (staging / intermediate / marts, data quality and freshness tests).
+- Sprint 1 (done, 2026-10-10): Airflow 3 (LocalExecutor) and DuckDB, three DAGs:
+  - `gbfs_snapshot`, every 5 minutes: lands the raw `station_status` JSON, unchanged, to
+    `data/landing/gbfs/station_status/dt=YYYY-MM-DD/HHMM.json` (atomic write, name from the run).
+  - `daily_load`, daily at 00:00 UTC: replaces one UTC day in `raw.gbfs_station_status`
+    (DELETE + INSERT in one transaction); fails if the day has no snapshot.
+  - `load_velib_grid_2026_07`, manual: rebuilds `raw.velib_grid_2026_07` (CREATE OR REPLACE);
+    fails unless it loads 5 distinct days.
+  
+  DuckDB writers share the `duckdb_writer` pool (1 slot): one writer at a time.
+- Sprint 2 (next): dbt (staging / intermediate / marts, data quality and freshness tests).
+
+Invariants verified at the close of Sprint 1:
+
+| Invariant | Check | Result |
+|---|---|---|
+| `daily_load` is idempotent | 2026-10-09 loaded by the scheduled run, then by two `airflow backfill create --reprocess-behavior completed` | 281 015 rows each time = sum of stations over the 185 landed files; 0 duplicate (station, snapshot) |
+| `load_velib_grid_2026_07` is idempotent | two runs | 1 602 412 rows and 5 distinct `dt` each time |
+| July grid is consistent | import script checks | `ts = bin_epoch` on every row, `(station_id, bin_epoch)` unique; coverage per day below |
 
 ## Run locally
 
     cp .env.example .env      # then set real secrets
     docker compose build
     docker compose up -d      # UI on http://127.0.0.1:8080
+    # DAGs start paused:
+    docker compose exec airflow-scheduler airflow dags unpause gbfs_snapshot
+    docker compose exec airflow-scheduler airflow dags unpause daily_load
+
+The July grid is optional: import it with `scripts/import_velib_grid_2026_07.py` (command in its
+docstring), then trigger `load_velib_grid_2026_07`.
 
 ## Known data gap: July 2026 raw JSON is lost
 
 The raw GBFS messages collected by UrbanFlow in July 2026 no longer exist. Kafka kept them for
 20 days, and the MinIO cold store holds no July partition: the streaming job did not run
 continuously during the collection and partitioned on the feed's `last_reported` instead of
-capture time. What survives is a derived 5-minute grid (2026-07-01 to 2026-07-05). It will be
-loaded as a separate table, `raw.velib_grid_2026_07`, with its own grain and schema, and
-reconciled with the live GBFS snapshots in a dbt staging model.
+capture time. What survives is a derived 5-minute grid (2026-07-01 to 2026-07-05). It is
+loaded as a separate table, `raw.velib_grid_2026_07`, with its own grain and schema, and will be
+reconciled with the live GBFS snapshots in the dbt layer.
 
 ## Known data gaps
 
