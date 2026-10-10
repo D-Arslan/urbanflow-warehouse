@@ -23,6 +23,18 @@ capture time. What survives is a derived 5-minute grid (2026-07-01 to 2026-07-05
 loaded as a separate table, `raw.velib_grid_2026_07`, with its own grain and schema, and
 reconciled with the live GBFS snapshots in a dbt staging model.
 
+## Known data gaps
+
+Missing 5-minute bins, all stations at once. Every future gap is added here.
+
+| Period (UTC, missing bins) | Cause | Source of the cause |
+|---|---|---|
+| 2026-07-01 12:20–16:05 (6 gaps, 25 bins); 2026-07-02 03:25–08:40 (64 bins) | Not recorded | None: UrbanFlow's docs and logs do not mention it |
+| 2026-10-10 01:10–08:15 (86 bins; last snapshot 01:05, next 08:20) | Windows Update restarted the host at 01:07; Docker Desktop did not restart and the services had no restart policy | Windows System log, event 1074 (`MoUsoCoreWorker`, `TrustedInstaller`) |
+
+Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
+whenever Docker Desktop starts.
+
 ## Data provenance: raw.velib_grid_2026_07
 
 Derived historical backfill, not GBFS snapshots: the 5-minute grid built by UrbanFlow's
