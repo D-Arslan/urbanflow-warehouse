@@ -1,0 +1,27 @@
+sources:
+  - name: raw
+    description: Tables loaded by Airflow (daily_load, load_velib_grid_2026_07) into warehouse.duckdb.
+    schema: raw
+    tables:
+      - name: gbfs_station_status
+        description: >
+          GBFS station_status, one row per station and 5-minute snapshot, as delivered
+          (source field names, epoch seconds). Loaded daily by daily_load, one UTC day per dt.
+        config:
+          # Freshness of the data, not of the load: _snapshot_at is the capture time.
+          loaded_at_field: _snapshot_at
+          freshness:
+            warn_after: {count: 2, period: hour}
+            error_after: {count: 26, period: hour}
+
+      - name: gbfs_station_information
+        description: >
+          GBFS station_information, one row per station and day (dt): name, coordinates,
+          capacity. Collected daily since 2026-10-10; dt keeps the history.
+
+      - name: velib_grid_2026_07
+        description: >
+          Derived historical backfill (UrbanFlow build_grid): latest measure per station and
+          5-minute bin, 2026-07-01 to 2026-07-05. Frozen source, see README Data provenance.
+        config:
+          freshness: null
