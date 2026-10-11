@@ -1,0 +1,5 @@
+# dbt, installed in its own venv (/opt/airflow/dbt-venv), see Dockerfile.
+# duckdb is pinned to the same version as requirements-airflow.txt: both write warehouse.duckdb.
+dbt-core==1.12.5
+dbt-duckdb==1.11.0
+duckdb==1.5.6
