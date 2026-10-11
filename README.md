@@ -31,6 +31,8 @@ Invariants verified at the close of Sprint 1:
     # DAGs start paused:
     docker compose exec airflow-scheduler airflow dags unpause gbfs_snapshot
     docker compose exec airflow-scheduler airflow dags unpause daily_load
+    # dbt (own venv in the image; exec, not run, so the Airflow entrypoint is bypassed):
+    docker compose exec airflow-scheduler /opt/airflow/dbt-venv/bin/dbt build --project-dir /opt/airflow/dbt
 
 The July grid is optional: import it with `scripts/import_velib_grid_2026_07.py` (command in its
 docstring), then trigger `load_velib_grid_2026_07`.
@@ -60,13 +62,16 @@ Collection policy: 2026-10-11 is collected as a complete day; after that, collec
 opportunistic (it runs while the host is on). The reference dataset for analysis remains the
 July 2026 grid.
 
+dbt source freshness warns when the laptop has been asleep: collection is opportunistic by
+design, see Known data gaps.
+
 ## Known data quirks
 
 Facts about the source feeds, measured in `raw`; the dbt layer handles them explicitly.
 
 | Quirk | Measured | Handling |
 |---|---|---|
-| `stationCode` null for every station in one `station_status` snapshot | 2026-10-09 08:34: 1519 of 1519 rows | rebuilt in dbt staging from `station_information` (join on `station_id`) |
+| Degraded `station_status` snapshots: `stationCode` null and `num_bikes_available_types` empty (`[{},{}]`) for every station | 4 snapshots on 2026-10-09 (08:34, 12:35, 13:35, 14:35), 6076 rows; none on 2026-10-10 | staging keeps them, with the mechanical / e-bike split as null (unknown, not zero); `station_code` rebuilt downstream from `station_information` (join on `station_id`) |
 | Stations with `capacity = 0` in `station_information` | 2 of 1519 on 2026-10-10 (`21502` Verdun - Place Henri IV, `23404` Bouvier - Carnot); both report `is_installed = 0`, 0 bikes and 0 docks in every snapshot of 2026-10-09/10; `21502` was active in the July grid | the dbt test `bikes + docks <= capacity` runs with `severity: warn` and excludes `capacity = 0` |
 
 ## Data provenance: raw.velib_grid_2026_07
