@@ -1,0 +1,25 @@
+models:
+  - name: stg_gbfs_station_status
+    description: >
+      GBFS station_status, typed and renamed. Grain: one row per station and snapshot
+      (station_id, snapshot_at). Times are naive UTC.
+    data_tests:
+      - unique:
+          column_name: "concat(station_id, '|', snapshot_at)"
+    columns:
+      - name: station_id
+        description: GBFS station identifier, shared with station_information and the July grid.
+        data_tests:
+          - not_null
+      - name: snapshot_at
+        description: Capture time of the snapshot (UTC), from the landing file name.
+        data_tests:
+          - not_null
+      - name: bin_ts
+        description: Start of the 5-minute bin containing snapshot_at, the grain shared with the July grid.
+      - name: station_code
+        description: Vélib' station code as delivered; null in a few degraded snapshots.
+      - name: num_mechanical_bikes_available
+        description: Mechanical bikes; null when the feed sent an empty breakdown.
+      - name: num_ebikes_available
+        description: Electric bikes; null when the feed sent an empty breakdown.
