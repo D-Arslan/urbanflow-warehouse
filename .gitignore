@@ -12,6 +12,12 @@ data/
 # --- Airflow runtime ---
 logs/
 
+# --- dbt (build artifacts, installed packages, anonymous user id) ---
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
 # --- Python ---
 __pycache__/
 *.py[cod]

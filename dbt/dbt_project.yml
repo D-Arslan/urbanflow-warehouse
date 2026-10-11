@@ -1,0 +1,18 @@
+name: urbanflow                 # project name, also the key under `models:` below
+version: "1.0.0"
+config-version: 2
+profile: urbanflow              # which entry of profiles.yml to use
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+models:
+  urbanflow:
+    staging:                    # one model per source table: rename, cast, no join
+      +materialized: view
+      +schema: staging

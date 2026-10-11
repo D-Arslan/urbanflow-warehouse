@@ -1,0 +1,7 @@
+urbanflow:
+  target: prod
+  outputs:
+    prod:
+      type: duckdb
+      path: "{{ env_var('WAREHOUSE_PATH') }}"   # set in docker-compose.yml; nothing hard-coded
+      threads: 1
