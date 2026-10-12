@@ -54,13 +54,19 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 |---|---|---|
 | 2026-07-01 12:20–16:05 (6 gaps, 25 bins); 2026-07-02 03:25–08:40 (64 bins) | Not recorded | None: UrbanFlow's docs and logs do not mention it |
 | 2026-10-10 01:10–08:15 (86 bins; last snapshot 01:05, next 08:20) | Windows Update restarted the host at 01:07; Docker Desktop did not restart and the services had no restart policy | Windows System log, event 1074 (`MoUsoCoreWorker`, `TrustedInstaller`) |
+| 2026-10-11 10:25–16:00 (68 bins), 16:10–19:00 (35 bins), 19:35–23:55 (53 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
+| 2026-10-12 00:00–09:25 (114 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
 
-Collection policy: 2026-10-11 is collected as a complete day; after that, collection is
-opportunistic (it runs while the host is on). The reference dataset for analysis remains the
-July 2026 grid.
+Collection policy: collection is opportunistic (it runs while the host is on); 2026-10-11 was
+planned as a complete day but the host went to sleep (table above), and the power settings are
+left unchanged on purpose. The reference dataset for analysis remains the July 2026 grid.
+
+A missed run is caught up: `daily_load` for 2026-10-11 started at 01:34 UTC during a brief
+wake, finished at 09:32 UTC once the host was awake, and loaded 200 508 rows = 132 landed files
+× 1519 stations.
 
 dbt source freshness warns when the laptop has been asleep: collection is opportunistic by
 design, see Known data gaps.
