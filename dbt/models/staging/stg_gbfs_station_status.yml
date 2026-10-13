@@ -19,6 +19,12 @@ models:
         description: Start of the 5-minute bin containing snapshot_at, the grain shared with the July grid.
       - name: station_code
         description: Vélib' station code as delivered; null in a few degraded snapshots.
+      - name: num_bikes_available
+        data_tests:
+          - non_negative
+      - name: num_docks_available
+        data_tests:
+          - non_negative
       - name: num_mechanical_bikes_available
         description: Mechanical bikes; null when the feed sent an empty breakdown.
       - name: num_ebikes_available
