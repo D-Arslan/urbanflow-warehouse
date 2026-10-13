@@ -1,0 +1,26 @@
+models:
+  - name: int_station_status_5min
+    description: >
+      Station availability on a common 5-minute grid, GBFS snapshots and July grid unioned.
+      Grain: one row per station and bin (station_id, bin_ts). bin_ts is UTC in both sources,
+      verified on 2026-10-12: GBFS file names come from the UTC run time (median gap of 1 s
+      between file name and write time over 547 files); the July grid's clock is the poller's
+      Unix epoch (time.time()), and the import checked ts = bin_epoch on every row.
+    data_tests:
+      - unique:
+          column_name: "concat(station_id, '|', bin_ts)"
+    columns:
+      - name: station_id
+        data_tests:
+          - not_null
+      - name: bin_ts
+        description: Start of the 5-minute bin, UTC.
+        data_tests:
+          - not_null
+      - name: source
+        description: "'gbfs' (live snapshots, since 2026-10-09) or 'grid' (July 2026 backfill)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['gbfs', 'grid']

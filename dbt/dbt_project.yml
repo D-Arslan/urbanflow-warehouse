@@ -16,3 +16,6 @@ models:
     staging:                    # one model per source table: rename, cast, no join
       +materialized: view
       +schema: staging
+    intermediate:               # what the marts need, nothing more; tables (window, read twice)
+      +materialized: table
+      +schema: intermediate
