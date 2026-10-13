@@ -54,7 +54,7 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 |---|---|---|
 | 2026-07-01 12:20–16:05 (6 gaps, 25 bins); 2026-07-02 03:25–08:40 (64 bins) | Not recorded | None: UrbanFlow's docs and logs do not mention it |
 | 2026-10-10 01:10–08:15 (86 bins; last snapshot 01:05, next 08:20) | Windows Update restarted the host at 01:07; Docker Desktop did not restart and the services had no restart policy | Windows System log, event 1074 (`MoUsoCoreWorker`, `TrustedInstaller`) |
-| 2026-10-11 10:25–16:00 (68 bins), 16:10–19:00 (35 bins), 19:35–23:55 (53 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
+| 2026-10-11 10:20–19:00 (105 bins), 19:30–23:55 (54 bins); includes the 3 quarantined slots (Known data quirks) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 | 2026-10-12 00:00–09:25 (114 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
@@ -66,7 +66,8 @@ left unchanged on purpose. The reference dataset for analysis remains the July 2
 
 A missed run is caught up: `daily_load` for 2026-10-11 started at 01:34 UTC during a brief
 wake, finished at 09:32 UTC once the host was awake, and loaded 200 508 rows = 132 landed files
-× 1519 stations.
+× 1519 stations. Three of those files were later found mislabelled and quarantined (Known data
+quirks); after the reload the day holds 129 files, 195 951 rows.
 
 dbt source freshness warns when the laptop has been asleep: collection is opportunistic by
 design, see Known data gaps.
@@ -79,6 +80,7 @@ Facts about the source feeds, measured in `raw`; the dbt layer handles them expl
 |---|---|---|
 | Degraded `station_status` snapshots: `stationCode` null and `num_bikes_available_types` empty (`[{},{}]`) for every station | 4 snapshots on 2026-10-09 (08:34, 12:35, 13:35, 14:35), 6076 rows; none on 2026-10-10 | staging keeps them, with the mechanical / e-bike split as null (unknown, not zero); `station_code` rebuilt downstream from `station_information` (join on `station_id`) |
 | Stations with `capacity = 0` in `station_information` | 2 of 1519 on 2026-10-10 (`21502` Verdun - Place Henri IV, `23404` Bouvier - Carnot); both report `is_installed = 0`, 0 bikes and 0 docks in every snapshot of 2026-10-09/10; `21502` was active in the July grid | the dbt test `bikes + docks <= capacity` runs with `severity: warn` and excludes `capacity = 0` |
+| Late runs mislabelled: a run delayed by host sleep fetched the feed at wake-up but kept its scheduled name | 3 `station_status` files of 2026-10-11: `1020`, `1605`, `1930` held the feed of 16:07, 19:04 and 2026-10-12 09:30 (`lastUpdatedOther`), 3 to 14 h after their name | moved to `data/landing/_quarantine/` and the day reloaded (129 files, 195 951 rows). Guard: `gbfs_snapshot` skips a capture more than 240 s after its run time (unit tests in `tests/test_snapshot_guards.py`). Detection: the dbt test `assert_snapshot_matches_feed_time` fails when `snapshot_at` and `feed_updated_at` differ by more than 300 s (correct captures: 125 s at most); run on the 3 quarantined files, the same rule flags all of them (20 861 s, 10 765 s, 50 455 s) |
 
 ## Data provenance: raw.velib_grid_2026_07
 
