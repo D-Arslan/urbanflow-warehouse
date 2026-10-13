@@ -23,3 +23,7 @@ models:
         description: Mechanical bikes; null when the feed sent an empty breakdown.
       - name: num_ebikes_available
         description: Electric bikes; null when the feed sent an empty breakdown.
+      - name: feed_updated_at
+        description: >
+          Feed-level update time (lastUpdatedOther), UTC. Within about two minutes of snapshot_at
+          for a correct capture; checked by assert_snapshot_matches_feed_time.

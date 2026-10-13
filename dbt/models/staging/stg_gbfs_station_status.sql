@@ -31,6 +31,7 @@ renamed as (
         cast(is_renting as boolean)                    as is_renting,
         cast(is_returning as boolean)                  as is_returning,
         make_timestamp(last_reported * 1000000)        as last_reported_at,  -- naive UTC
+        make_timestamp(lastUpdatedOther * 1000000)     as feed_updated_at,   -- naive UTC, feed-level
 
         _source_file,
         _loaded_at
