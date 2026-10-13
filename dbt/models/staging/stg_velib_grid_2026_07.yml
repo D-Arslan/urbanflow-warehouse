@@ -1,0 +1,25 @@
+models:
+  - name: stg_velib_grid_2026_07
+    description: >
+      July 2026 derived grid (UrbanFlow build_grid), renamed to the GBFS column names.
+      Grain: one row per station and 5-minute bin (station_id, bin_ts), UTC.
+    data_tests:
+      - unique:
+          column_name: "concat(station_id, '|', bin_ts)"
+    columns:
+      - name: station_id
+        description: GBFS station identifier.
+        data_tests:
+          - not_null
+      - name: bin_ts
+        description: Start of the 5-minute bin, UTC.
+        data_tests:
+          - not_null
+      - name: num_bikes_available
+        data_tests:
+          - not_null
+          - non_negative
+      - name: num_docks_available
+        data_tests:
+          - not_null
+          - non_negative
