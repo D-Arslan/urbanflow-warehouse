@@ -55,23 +55,29 @@ CREATE TABLE IF NOT EXISTS raw.gbfs_station_status (
     is_returning              INTEGER,
     last_reported             BIGINT,              -- epoch seconds, as delivered
     _source_file              VARCHAR   NOT NULL,
-    _loaded_at                TIMESTAMP NOT NULL   -- naive UTC, like _snapshot_at
+    _loaded_at                TIMESTAMP NOT NULL,  -- naive UTC, like _snapshot_at
+    lastUpdatedOther          BIGINT               -- feed-level epoch seconds, as delivered
 );
+-- Added after the first loads: tables created before keep working (column appended, NULL until reloaded).
+ALTER TABLE raw.gbfs_station_status ADD COLUMN IF NOT EXISTS lastUpdatedOther BIGINT;
 """
 
+# BY NAME: columns match on their alias, so the table's column order does not matter.
 INSERT_STATUS_SQL = """
-INSERT INTO raw.gbfs_station_status
+INSERT INTO raw.gbfs_station_status BY NAME
 SELECT
-    $day::DATE,
-    strptime($day || regexp_extract(filename, '([0-9]{{4}})\\.json$', 1), '%Y-%m-%d%H%M'),
+    $day::DATE AS dt,
+    strptime($day || regexp_extract(filename, '([0-9]{{4}})\\.json$', 1), '%Y-%m-%d%H%M') AS _snapshot_at,
     s.station_id, s.stationCode, s.num_bikes_available, s.num_docks_available,
     s.num_bikes_available_types, s.is_installed, s.is_renting, s.is_returning,
     s.last_reported,
-    filename,
-    CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
+    lastUpdatedOther,
+    filename AS _source_file,
+    CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP) AS _loaded_at
 FROM (
-    SELECT filename, unnest(data.stations) AS s
-    FROM read_json('{pattern}', columns = {{'data': '{stations_type}'}},
+    SELECT filename, lastUpdatedOther, unnest(data.stations) AS s
+    FROM read_json('{pattern}',
+                   columns = {{'lastUpdatedOther': 'BIGINT', 'data': '{stations_type}'}},
                    filename = true, hive_partitioning = false)
 )
 """
