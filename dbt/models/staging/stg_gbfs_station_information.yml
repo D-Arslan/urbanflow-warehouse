@@ -1,0 +1,26 @@
+models:
+  - name: stg_gbfs_station_information
+    description: >
+      GBFS station_information, renamed. Grain: one row per station and reference day
+      (station_id, info_date); collected daily since 2026-10-10.
+    data_tests:
+      - unique:
+          column_name: "concat(station_id, '|', info_date)"
+    columns:
+      - name: station_id
+        description: GBFS station identifier, shared with station_status and the July grid.
+        data_tests:
+          - not_null
+      - name: info_date
+        description: UTC day the reference copy describes (landing dt).
+        data_tests:
+          - not_null
+      - name: station_code
+        description: Vélib' station code.
+        data_tests:
+          - not_null
+      - name: capacity
+        description: Number of docks; 0 for out-of-service stations (README, Known data quirks).
+        data_tests:
+          - not_null
+          - non_negative
