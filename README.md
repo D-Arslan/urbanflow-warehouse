@@ -56,7 +56,7 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 | 2026-10-10 01:10–08:15 (86 bins; last snapshot 01:05, next 08:20) | Windows Update restarted the host at 01:07; Docker Desktop did not restart and the services had no restart policy | Windows System log, event 1074 (`MoUsoCoreWorker`, `TrustedInstaller`) |
 | 2026-10-11 10:20–19:00 (105 bins), 19:30–23:55 (54 bins); includes the 3 quarantined slots (Known data quirks) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 | 2026-10-12 00:00–09:25 (114 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
-| 2026-10-12 13:10–23:55 (130 bins); 2026-10-13 00:00–09:20 (113 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 (sleep at 13:06 UTC), Power-Troubleshooter 1 (wake at 09:27 UTC) |
+| 2026-10-12 13:10–23:55 (130 bins); 2026-10-13 00:00–09:20 (113 bins). Count on 2026-10-12: 114 missing 00:00–09:25 (row above) + 44 present 09:30–13:05 + 130 missing 13:10–23:55 = 288 | Host asleep (Windows modern standby) | System log, Kernel-Power 506 (sleep at 13:06 UTC), Power-Troubleshooter 1 (wake at 09:27 UTC) |
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
