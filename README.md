@@ -75,8 +75,9 @@ Since 2026-10-10 the long-running services use `restart: unless-stopped`, so the
 whenever Docker Desktop starts.
 
 Collection policy: collection is opportunistic (it runs while the host is on); 2026-10-11 was
-planned as a complete day but the host went to sleep (table above), and the power settings are
-left unchanged on purpose. The reference dataset for analysis remains the July 2026 grid.
+planned as a complete day but the host went to sleep (table above). The power settings were
+left unchanged until 2026-10-15, then changed (decision above). The reference dataset for
+analysis remains the July 2026 grid.
 
 A missed run is caught up: `daily_load` for 2026-10-11 started at 01:34 UTC during a brief
 wake, finished at 09:32 UTC once the host was awake, and loaded 200 508 rows = 132 landed files
