@@ -57,6 +57,19 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 | 2026-10-11 10:20–19:00 (105 bins), 19:30–23:55 (54 bins); includes the 3 quarantined slots (Known data quirks) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 | 2026-10-12 00:00–09:25 (114 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506/42 |
 | 2026-10-12 13:10–23:55 (130 bins); 2026-10-13 00:00–09:20 (113 bins). Count on 2026-10-12: 114 missing 00:00–09:25 (row above) + 44 present 09:30–13:05 + 130 missing 13:10–23:55 = 288 | Host asleep (Windows modern standby) | System log, Kernel-Power 506 (sleep at 13:06 UTC), Power-Troubleshooter 1 (wake at 09:27 UTC) |
+| 2026-10-13 13:30–18:25 (60 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 13:28 UTC, 507 at 18:30 UTC |
+| 2026-10-13 20:35–23:55 (41 bins); 2026-10-14 00:00–08:15 (100 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 20:32 UTC; brief wake at 03:27 then sleep (42); 507 at 08:20 UTC |
+| 2026-10-14 12:30–13:50 (17 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 12:27 UTC, 507 at 13:57 UTC |
+| 2026-10-14 14:10–23:55 (118 bins); 2026-10-15 00:00–09:50 (119 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 14:08 UTC; brief wake at 20:23 then sleep (42); Power-Troubleshooter 1 at 09:56 UTC |
+| 2026-10-15 14:35–16:45 (27 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 14:30 UTC, 507 at 16:49 UTC |
+
+No collector error over these periods: no failed or retried `gbfs_snapshot` task, containers up
+without restart. At each wake-up the late runs were skipped by the guard (8 runs from 2026-10-13
+to 2026-10-15) and `daily_load` caught up the missed nights.
+
+Decision (2026-10-15): on mains power the host no longer sleeps (sleep: never, lid close: do
+nothing), so collection is continuous on mains power from the evening of 2026-10-15. It stays
+best effort on a laptop; `fct_daily_coverage` measures the coverage actually obtained.
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
