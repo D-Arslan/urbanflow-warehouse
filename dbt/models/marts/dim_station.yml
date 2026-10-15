@@ -1,0 +1,58 @@
+models:
+  - name: dim_station
+    description: >
+      One row per station ever observed in any source (reference, GBFS snapshots, July grid).
+      Attributes from the station's most recent station_information copy.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: station_id
+        data_type: bigint
+        description: GBFS station identifier. Primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: station_code
+        data_type: varchar
+        description: >
+          Vélib' station code: from the latest reference copy, otherwise the most recent
+          non-null code in the GBFS snapshots or the July grid.
+        data_tests:
+          - not_null
+      - name: station_name
+        data_type: varchar
+        description: Null for stations never present in station_information.
+      - name: latitude
+        data_type: double
+      - name: longitude
+        data_type: double
+      - name: capacity
+        data_type: integer
+        description: Number of docks; 0 for out-of-service stations (README, Known data quirks).
+        data_tests:
+          - non_negative
+      - name: reference_date
+        data_type: date
+        description: info_date of the copy the attributes come from; null if never in the reference.
+      - name: in_latest_reference
+        data_type: boolean
+        description: >
+          Present in the most recent station_information copy; not a service status
+          (out-of-service stations have capacity = 0).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+      - name: first_seen_at
+        data_type: timestamp
+        description: First 5-minute bin with a measure for the station, UTC.
+        data_tests:
+          - not_null
+      - name: last_seen_at
+        data_type: timestamp
+        description: Last 5-minute bin with a measure for the station, UTC.
+        data_tests:
+          - not_null

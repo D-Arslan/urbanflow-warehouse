@@ -19,3 +19,8 @@ models:
     intermediate:               # what the marts need, nothing more; tables (window, read twice)
       +materialized: table
       +schema: intermediate
+    marts:                      # public interface for the dashboard: tables with enforced contracts
+      +materialized: table
+      +schema: marts
+      +contract:
+        enforced: true
