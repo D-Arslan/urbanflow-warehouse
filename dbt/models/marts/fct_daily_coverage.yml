@@ -50,11 +50,21 @@ models:
       - name: pct_stations_complete
         data_type: double
         description: >
-          stations_complete / stations_observed, measured against the bins collected that day,
-          not 288; null on a day without any bin.
+          (a) stations_complete / stations_observed, measured against the bins collected that
+          day, not 288; null on a day without any bin.
+          (b) Currently 1.0 on every day: each snapshot holds every station, so no station drops
+          out of a collected day.
+          (c) Becomes useful if the feed starts omitting stations from some snapshots: the share
+          then falls below 1.0 while bins_present stays unchanged.
       - name: is_complete_day
         data_type: boolean
         description: bins_present = 288.
       - name: is_current_day
         data_type: boolean
-        description: The UTC day in progress at build time; it is not over, so never complete.
+        description: >
+          (a) The UTC day in progress at build time; it is not over, so never complete, and
+          assert_daily_bins_complete skips it.
+          (b) Currently never true: daily_load loads day D at 00:00 UTC on D+1, so the day in
+          progress is not in raw yet.
+          (c) Becomes useful if a day is loaded while still running (manual daily_load or dbt
+          build on a partial day); the flag then keeps that day out of the completeness warning.
