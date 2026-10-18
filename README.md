@@ -62,6 +62,11 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 | 2026-10-14 12:30–13:50 (17 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 12:27 UTC, 507 at 13:57 UTC |
 | 2026-10-14 14:10–23:55 (118 bins); 2026-10-15 00:00–09:50 (119 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 14:08 UTC; brief wake at 20:23 then sleep (42); Power-Troubleshooter 1 at 09:56 UTC |
 | 2026-10-15 14:35–16:45 (27 bins) | Host asleep (Windows modern standby) | System log, Kernel-Power 506 at 14:30 UTC, 507 at 16:49 UTC |
+| 2026-10-15 19:20–23:55 (56 bins); 2026-10-16 00:00–08:50 (107 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 105 `AcOnline=false` at 19:16 UTC, 506 at 19:16, 42 (hibernate) at 01:47; Power-Troubleshooter 1 at 08:54 |
+| 2026-10-16 19:15–23:55 (57 bins); 2026-10-17 00:00–02:20 (29 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 105 `AcOnline=false` at 19:10 UTC, 506 at 19:10; brief wake at 02:26 |
+| 2026-10-17 02:30–11:20 (107 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 42 (hibernate) at 02:27 UTC; Power-Troubleshooter 1 at 11:25 |
+| 2026-10-17 11:40–18:40 (85 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 506 at 11:35 UTC, 507 at 18:46 |
+| 2026-10-17 21:20–23:55 (32 bins); 2026-10-18 00:00–09:15 (112 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 42 (hibernate) at 21:16 UTC; 105 `AcOnline=true` at 09:21 |
 
 No collector error over these periods: no failed or retried `gbfs_snapshot` task, containers up
 without restart. At each wake-up the late runs were skipped by the guard (8 runs from 2026-10-13
@@ -70,6 +75,11 @@ to 2026-10-15) and `daily_load` caught up the missed nights.
 Decision (2026-10-15): on mains power the host no longer sleeps (sleep: never, lid close: do
 nothing), so collection is continuous on mains power from the evening of 2026-10-15. It stays
 best effort on a laptop; `fct_daily_coverage` measures the coverage actually obtained.
+
+No gap on AC power since 15 Oct evening: every gap from 2026-10-15 19:20 to 2026-10-18 09:15
+started after the host was unplugged (Kernel-Power 105 `AcOnline=false`) and ended when it woke
+up; the sleep settings on battery are left as they are on a laptop. 2026-10-18 is checked again
+once the day is over.
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
