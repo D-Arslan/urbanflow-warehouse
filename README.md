@@ -13,7 +13,8 @@ Vélib' pipeline: Airflow lands GBFS snapshots, DuckDB stores them, dbt models t
     fails unless it loads 5 distinct days.
   
   DuckDB writers share the `duckdb_writer` pool (1 slot): one writer at a time.
-- Sprint 2 (next): dbt (staging / intermediate / marts, data quality and freshness tests).
+- Sprint 2 (in progress): `gbfs_station_information` DAG (daily reference copy) and a dbt
+  project (staging / intermediate / marts, data tests, source freshness), see Data model.
 
 Invariants verified at the close of Sprint 1:
 
@@ -36,6 +37,49 @@ Invariants verified at the close of Sprint 1:
 
 The July grid is optional: import it with `scripts/import_velib_grid_2026_07.py` (command in its
 docstring), then trigger `load_velib_grid_2026_07`.
+
+## Data model (dbt)
+
+Layers: `staging` (views, one per raw table: rename, cast, no join) → `intermediate`
+(`int_station_status_5min`: GBFS snapshots and July grid unioned on the grain station × 5-minute
+bin, UTC, with a `source` column) → `marts` (tables with enforced contracts, read by a dashboard).
+All times are naive UTC; `hour_of_day_local` is the only Paris-time column.
+
+| Mart | Grain (one row =) | Key | Built from |
+|---|---|---|---|
+| `dim_station` | a station ever observed in any source | `station_id` | latest `station_information` copy + every station seen in the snapshots or the grid |
+| `fct_station_availability_hourly` | a station × a UTC hour with at least one bin | (`station_id`, `hour_ts`) | `int_station_status_5min` |
+| `fct_daily_coverage` | a UTC day × a source | (`coverage_date`, `source`) | `int_station_status_5min` |
+
+Rules:
+- **No row for an hour without any bin.** A fact records observations; the coverage of the
+  collection has its own table, `fct_daily_coverage`. Partial hours keep their row and show it in
+  `bins_present` (1–12).
+- **Closed bins are excluded.** A bin with 0 bikes and 0 docks would be both empty and full: it is
+  counted in `bins_closed` and left out of the averages, `bins_empty`, `bins_full` and the shares.
+  Integer counters sit next to the shares so the dashboard can re-aggregate at any grain
+  (`sum(bins_empty) / sum(bins_present - bins_closed)`).
+- **0/0 in the July grid.** The grid has no `is_installed` field: a 0-bike, 0-dock bin cannot be
+  told apart from a value UrbanFlow recorded as 0. It is counted as closed in both sources.
+- **`dim_station.in_latest_reference`** means present in the most recent `station_information`
+  copy, not in service: out-of-service stations have `capacity = 0`. The 3 stations seen only in
+  the July grid (`1022`, `10037`, `51003`) are `false` and have no name, coordinates or capacity.
+- **Reference changes stay visible.** `station_information` is kept per day: station `40010`
+  (Haut du Mont-Mesly) went from a capacity of 21 to 0 on 2026-10-13.
+- **`fct_daily_coverage`**: `pct_stations_complete` is 1.0 on every day so far (each snapshot holds
+  every station), and `is_current_day` is never true because `daily_load` loads day D on D+1; both
+  are kept for the cases described in the model's `.yml`.
+
+Tests: `unique` / `not_null` on every key, `relationships` from the hourly fact to `dim_station`,
+`accepted_values`, a custom generic test `non_negative`, singular tests (snapshot vs feed time,
+counter consistency, reference flag, sources not overlapping, daily completeness as a warning), and
+a unit test of `hour_of_day_local` across the change to winter time on 2026-10-25.
+
+Materialization: tables, not incremental. Measured on one run on 2026-10-18, a full `dbt build`
+(7 models, 59 data tests, 1 unit test) takes 8.21 s; `int_station_status_5min` (3 018 120 rows)
+builds in 0.78 s and the hourly fact (282 258 rows) in 0.73 s. Switch the hourly fact to incremental
+(`delete+insert` on the day, the rule `daily_load` already follows) when a full build exceeds
+5 minutes.
 
 ## Known data gap: July 2026 raw JSON is lost
 
@@ -144,3 +188,12 @@ itself.
 `ts` is naive UTC. Partitions `dt=YYYY-MM-DD` are the **UTC date of ts** (not Paris time),
 aligned with the `dt=` partitions of the GBFS landing zone. Files live in
 `data/raw/velib_grid_2026_07/`, which is not versioned.
+
+## Backlog
+
+- **Move the collector to the OVH VPS (container + cron) to get continuous collection independent
+  of the laptop.** Why: every gap since 2026-10-10 comes from the host (a Windows Update restart,
+  then sleep; since the mains-power setting of 2026-10-15, only sleep on battery), never from the
+  collector. Size, measured on 2026-10-18 over the landed files: `station_status` 453 KiB per
+  snapshot × 288 per day ≈ 127 MiB/day of raw JSON (≈ 3.7 GiB per 30 days),
+  `station_information` ≈ 0.3 MiB/day. Not implemented.
