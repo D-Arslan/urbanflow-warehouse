@@ -1,0 +1,60 @@
+models:
+  - name: fct_daily_coverage
+    description: >
+      Collection coverage per UTC day and source. Grain: one row per (coverage_date, source),
+      every day between the source's first and last observed day (a day with no bin has a row).
+      A full day has 288 five-minute bins. Gaps and their causes: README, Known data gaps.
+    config:
+      contract:
+        enforced: true
+    data_tests:
+      - unique:
+          column_name: "concat(coverage_date, '|', source)"
+    columns:
+      - name: coverage_date
+        data_type: date
+        description: UTC day.
+        data_tests:
+          - not_null
+      - name: source
+        data_type: varchar
+        description: "'gbfs' (live snapshots) or 'grid' (July 2026 backfill)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['gbfs', 'grid']
+      - name: bins_present
+        data_type: integer
+        description: Distinct 5-minute bins collected that day (0-288).
+        data_tests:
+          - non_negative
+      - name: bins_expected
+        data_type: integer
+        description: 288, the bins of a full calendar day.
+      - name: bins_missing
+        data_type: integer
+        description: bins_expected - bins_present.
+        data_tests:
+          - non_negative
+      - name: stations_observed
+        data_type: integer
+        description: Distinct stations with at least one bin that day.
+        data_tests:
+          - non_negative
+      - name: stations_complete
+        data_type: integer
+        description: Stations present in every bin collected that day (counter, re-aggregable).
+        data_tests:
+          - non_negative
+      - name: pct_stations_complete
+        data_type: double
+        description: >
+          stations_complete / stations_observed, measured against the bins collected that day,
+          not 288; null on a day without any bin.
+      - name: is_complete_day
+        data_type: boolean
+        description: bins_present = 288.
+      - name: is_current_day
+        data_type: boolean
+        description: The UTC day in progress at build time; it is not over, so never complete.
