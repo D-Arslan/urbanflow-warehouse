@@ -191,7 +191,7 @@ aligned with the `dt=` partitions of the GBFS landing zone. Files live in
 
 ## Backlog
 
-- **Move the collector to the OVH VPS (container + cron) to get continuous collection independent
+- **Move the collector to a personal VPS (Hetzner/OVH, not the ACB client server) (container + cron) to get continuous collection independent
   of the laptop.** Why: every gap since 2026-10-10 comes from the host (a Windows Update restart,
   then sleep; since the mains-power setting of 2026-10-15, only sleep on battery), never from the
   collector. Size, measured on 2026-10-18 over the landed files: `station_status` 453 KiB per
