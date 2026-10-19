@@ -143,7 +143,9 @@ def replace_day(create_sql: str, table: str, insert_sql: str, day: date) -> int:
     start_date=pendulum.datetime(2026, 10, 9, tz="UTC"),
     catchup=False,
     max_active_runs=1,
-    default_args={"retries": 1, "retry_delay": pendulum.duration(minutes=2)},
+    # 3 x 5 min: a DuckDB lock collision (e.g. a manual dbt run at midnight) or a slow start after
+    # wake-up fails at once without corrupting anything; a later attempt finds the file free.
+    default_args={"retries": 3, "retry_delay": pendulum.duration(minutes=5)},
     tags=["urbanflow", "load"],
 )
 def daily_load():
