@@ -19,6 +19,8 @@ from airflow.sdk import dag, get_current_context, task
 from airflow.sdk.exceptions import AirflowSkipException
 from airflow.timetables.interval import CronDataIntervalTimetable
 
+from warehouse_assets import RAW_GBFS
+
 LANDING_ROOT = Path("/opt/airflow/data/landing/gbfs")
 WAREHOUSE_PATH = os.environ["WAREHOUSE_PATH"]
 STATION_INFORMATION_SINCE = date(2026, 10, 10)  # first day with a landed station_information
@@ -165,8 +167,11 @@ def daily_load():
         insert = INSERT_INFO_SQL.format(path=path, stations_type=INFO_STATIONS_TYPE)
         return replace_day(CREATE_INFO_SQL, "raw.gbfs_station_information", insert, day)
 
-    load_station_status_day()
-    load_station_information_day()
+    @task(outlets=[RAW_GBFS], trigger_rule="none_failed")
+    def publish_raw_gbfs() -> None:
+        """Emit one asset event once both loads are done (succeeded or skipped), never after a failure."""
+
+    [load_station_status_day(), load_station_information_day()] >> publish_raw_gbfs()
 
 
 daily_load()

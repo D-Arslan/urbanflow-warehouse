@@ -12,6 +12,8 @@ import duckdb
 import pendulum
 from airflow.sdk import dag, task
 
+from warehouse_assets import RAW_GRID
+
 GRID_DIR = Path("/opt/airflow/data/raw/velib_grid_2026_07")
 WAREHOUSE_PATH = os.environ["WAREHOUSE_PATH"]
 EXPECTED_DAYS = 5  # frozen source: 2026-07-01 to 2026-07-05
@@ -35,7 +37,7 @@ FROM read_parquet('{pattern}', hive_partitioning = true, filename = true);
     tags=["urbanflow", "load", "backfill"],
 )
 def load_velib_grid_2026_07():
-    @task(pool="duckdb_writer")
+    @task(pool="duckdb_writer", outlets=[RAW_GRID])
     def load_grid() -> dict:
         if not any(GRID_DIR.glob("dt=*/*.parquet")):
             raise FileNotFoundError(f"No Parquet partition in {GRID_DIR}: run scripts/import_velib_grid_2026_07.py first")
