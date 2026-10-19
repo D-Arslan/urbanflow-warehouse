@@ -111,6 +111,10 @@ Missing 5-minute bins, all stations at once. Every future gap is added here.
 | 2026-10-17 02:30–11:20 (107 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 42 (hibernate) at 02:27 UTC; Power-Troubleshooter 1 at 11:25 |
 | 2026-10-17 11:40–18:40 (85 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 506 at 11:35 UTC, 507 at 18:46 |
 | 2026-10-17 21:20–23:55 (32 bins); 2026-10-18 00:00–09:15 (112 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 42 (hibernate) at 21:16 UTC; 105 `AcOnline=true` at 09:21 |
+| 2026-10-18 11:00–12:00 (13 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 105 `AcOnline=false` at 10:51 UTC, 506 at 10:55, 507 at 12:03, 105 `AcOnline=true` at 12:03 |
+| 2026-10-18 14:25–14:30 (2 bins) | Network outage on AC power: DNS resolution failed | `gbfs_snapshot` runs of 14:25 and 14:30 failed after 3 attempts with `NameResolutionError` (`ConnectionError`); no sleep event in the System log |
+| 2026-10-18 15:55–17:20 (18 bins) | Host asleep on battery (unplugged) | System log, Kernel-Power 105 `AcOnline=false` at 15:51 UTC, 506 at 15:52, 507 at 17:26 |
+| 2026-10-18 20:10–23:55 (46 bins); 2026-10-19 00:00–12:00 (145 bins). Count on 2026-10-18: 97 present + 191 missing = 288 | Host asleep on battery (unplugged) | System log, Kernel-Power 42 (hibernate) at 20:07 UTC; Power-Troubleshooter 1 at 12:03 on 2026-10-19 |
 
 No collector error over these periods: no failed or retried `gbfs_snapshot` task, containers up
 without restart. At each wake-up the late runs were skipped by the guard (8 runs from 2026-10-13
@@ -120,10 +124,11 @@ Decision (2026-10-15): on mains power the host no longer sleeps (sleep: never, l
 nothing), so collection is continuous on mains power from the evening of 2026-10-15. It stays
 best effort on a laptop; `fct_daily_coverage` measures the coverage actually obtained.
 
-No gap on AC power since 15 Oct evening: every gap from 2026-10-15 19:20 to 2026-10-18 09:15
-started after the host was unplugged (Kernel-Power 105 `AcOnline=false`) and ended when it woke
-up; the sleep settings on battery are left as they are on a laptop. 2026-10-18 is checked again
-once the day is over.
+No sleep gap on AC power since 15 Oct evening; one network gap (DNS) on 2026-10-18. Every other
+gap from 2026-10-15 19:20 to 2026-10-19 12:00 started after the host was unplugged (Kernel-Power
+105 `AcOnline=false`) and ended when it woke up; the sleep settings on battery are left as they
+are on a laptop. The 2 bins of 2026-10-18 14:25–14:30 were lost on AC power to a DNS failure:
+`gbfs_snapshot` retries twice, 30 s apart, which did not cover the 6-minute outage.
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
