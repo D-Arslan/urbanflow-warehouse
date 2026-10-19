@@ -13,8 +13,11 @@ Vélib' pipeline: Airflow lands GBFS snapshots, DuckDB stores them, dbt models t
     fails unless it loads 5 distinct days.
   
   DuckDB writers share the `duckdb_writer` pool (1 slot): one writer at a time.
-- Sprint 2 (in progress): `gbfs_station_information` DAG (daily reference copy) and a dbt
-  project (staging / intermediate / marts, data tests, source freshness), see Data model.
+- Sprint 2 (in progress): two more DAGs, five in total, and a dbt project (staging /
+  intermediate / marts, data tests, source freshness), see Data model and Orchestration:
+  - `gbfs_station_information`, daily at 00:05 UTC: lands the daily reference copy (names,
+    coordinates, capacity); `daily_load` now also loads it into `raw.gbfs_station_information`.
+  - `dbt_build`, triggered by the raw loads (Airflow assets): source freshness, build, docs.
 
 Invariants verified at the close of Sprint 1:
 
@@ -32,7 +35,10 @@ Invariants verified at the close of Sprint 1:
     # DAGs start paused:
     docker compose exec airflow-scheduler airflow dags unpause gbfs_snapshot
     docker compose exec airflow-scheduler airflow dags unpause daily_load
-    # dbt (own venv in the image; exec, not run, so the Airflow entrypoint is bypassed):
+    docker compose exec airflow-scheduler airflow dags unpause gbfs_station_information
+    docker compose exec airflow-scheduler airflow dags unpause dbt_build
+    # dbt by hand (own venv in the image; exec, not run, so the Airflow entrypoint is bypassed;
+    # never between 23:50 and 00:15 UTC, when daily_load holds the DuckDB lock):
     docker compose exec airflow-scheduler /opt/airflow/dbt-venv/bin/dbt build --project-dir /opt/airflow/dbt
 
 The July grid is optional: import it with `scripts/import_velib_grid_2026_07.py` (command in its
@@ -81,6 +87,40 @@ builds in 0.78 s and the hourly fact (282 258 rows) in 0.73 s. Switch the hourly
 (`delete+insert` on the day, the rule `daily_load` already follows) when a full build exceeds
 5 minutes.
 
+## Orchestration
+
+    gbfs_snapshot (*/5) ──► landing/station_status ─┐
+    gbfs_station_information (00:05) ──► landing/station_information ─┤
+                                                    ▼
+    daily_load (00:00, day D-1) ── load status ─┐
+                                 └ load information ┴─► publish_raw_gbfs ──► asset warehouse.raw.gbfs ─┐
+    load_velib_grid_2026_07 (manual) ──────────────────────────────────► asset warehouse.raw.velib_grid_2026_07 ─┤
+                                                                                                             ▼
+    dbt_build:  dbt_source_freshness ──► dbt_build (all_done) ──► dbt_docs_generate      (+ run_failed_watcher)
+
+- **Assets, not a schedule.** `dbt_build` runs when `daily_load` or `load_velib_grid_2026_07` has
+  updated raw (`schedule = RAW_GBFS | RAW_GRID`, defined once in `dags/warehouse_assets.py`).
+  `daily_load` publishes a single event from `publish_raw_gbfs`, after both loads
+  (`trigger_rule="none_failed"`: a skipped load counts, a failed one does not trigger dbt).
+- **One writer at a time.** Every task that opens `warehouse.duckdb` (the loads and the three dbt
+  tasks) runs in the `duckdb_writer` pool (1 slot); `dbt_build` has `max_active_runs=1`. Checked
+  on 2026-10-19 with a reload of 2026-10-18 and a manual `dbt_build` started together: 8 tasks in
+  the pool, no overlapping pair; the load tasks ran between two dbt tasks, and the run triggered by
+  the reload's asset started once the manual run was over.
+- **A stale source does not block the marts.** `dbt_source_freshness` fails above 26 h (warns above
+  2 h); `dbt_build` still runs (`trigger_rule="all_done"`), then `dbt_docs_generate` (static docs
+  with the lineage, `dbt/target/static_index.html`). Airflow sets a run's state from its leaf tasks,
+  so `run_failed_watcher` (`one_failed`) fails when any task failed: the run shows as failed, the
+  marts are still rebuilt. Checked on 2026-10-19 with `error_after` lowered to 1 h for one run:
+  freshness failed, build and docs succeeded, run failed; normal runs succeed with the watcher
+  skipped.
+- **No XCom from the dbt tasks** (`do_xcom_push=False`): their output is never used, and on
+  2026-10-19 a slow XCom write retried by the task client failed a successful build on a duplicate
+  key.
+- **Retries.** `daily_load`: 3 retries, 5 minutes apart (a DuckDB lock collision fails at once
+  without damage; a later attempt finds the file free). `gbfs_snapshot`: 2 retries, 30 s apart,
+  inside the 240 s guard. dbt tasks: none; the next load triggers a new build.
+
 ## Known data gap: July 2026 raw JSON is lost
 
 The raw GBFS messages collected by UrbanFlow in July 2026 no longer exist. Kafka kept them for
@@ -128,7 +168,8 @@ No sleep gap on AC power since 15 Oct evening; one network gap (DNS) on 2026-10-
 gap from 2026-10-15 19:20 to 2026-10-19 12:00 started after the host was unplugged (Kernel-Power
 105 `AcOnline=false`) and ended when it woke up; the sleep settings on battery are left as they
 are on a laptop. The 2 bins of 2026-10-18 14:25–14:30 were lost on AC power to a DNS failure:
-`gbfs_snapshot` retries twice, 30 s apart, which did not cover the 6-minute outage.
+`gbfs_snapshot` retries twice, 30 s apart, which did not cover an outage of a few minutes
+(failed attempts from 14:25 to 14:31; the 14:20 and 14:35 captures succeeded).
 
 Since 2026-10-10 the long-running services use `restart: unless-stopped`, so they come back
 whenever Docker Desktop starts.
