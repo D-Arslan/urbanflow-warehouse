@@ -13,7 +13,7 @@ Vélib' pipeline: Airflow lands GBFS snapshots, DuckDB stores them, dbt models t
     fails unless it loads 5 distinct days.
   
   DuckDB writers share the `duckdb_writer` pool (1 slot): one writer at a time.
-- Sprint 2 (in progress): two more DAGs, five in total, and a dbt project (staging /
+- Sprint 2 (done, 2026-10-19): two more DAGs, five in total, and a dbt project (staging /
   intermediate / marts, data tests, source freshness), see Data model and Orchestration:
   - `gbfs_station_information`, daily at 00:05 UTC: lands the daily reference copy (names,
     coordinates, capacity); `daily_load` now also loads it into `raw.gbfs_station_information`.
@@ -26,6 +26,16 @@ Invariants verified at the close of Sprint 1:
 | `daily_load` is idempotent | 2026-10-09 loaded by the scheduled run, then by two `airflow backfill create --reprocess-behavior completed` | 281 015 rows each time = sum of stations over the 185 landed files; 0 duplicate (station, snapshot) |
 | `load_velib_grid_2026_07` is idempotent | two runs | 1 602 412 rows and 5 distinct `dt` each time |
 | July grid is consistent | import script checks | `ts = bin_epoch` on every row, `(station_id, bin_epoch)` unique; coverage per day below |
+
+Invariants verified at the close of Sprint 2 (2026-10-19):
+
+| Invariant | Check | Result |
+|---|---|---|
+| `dbt build` is green from Airflow | `airflow dags trigger dbt_build`, run `manual__2026-10-19T20:56:24` | run `success` in 28 s (freshness 7.8 s, build 10.4 s, docs 6.9 s, watcher skipped); dbt `PASS=66 WARN=1 ERROR=0` over 7 models, 59 data tests, 1 unit test. The warning is `assert_daily_bins_complete` (incomplete collection days, `severity: warn` by design); freshness warned (data age above 2 h, below 26 h) |
+| Tests pass | dbt: same run; Python: `tests/test_snapshot_guards.py` on 2026-10-19 | dbt: 58 data tests pass, 1 warns (above), the unit test passes; Python: 6 passed |
+| Lineage is visible | `dbt_docs_generate` in the same run | `dbt/target/static_index.html` written ("Catalog written"); text version in Lineage |
+| DAGs | `airflow dags list` | 5 DAGs: `gbfs_snapshot`, `gbfs_station_information`, `daily_load`, `dbt_build` unpaused; `load_velib_grid_2026_07` paused (manual, `schedule=None`) |
+| One DuckDB writer at a time | task timeline of 2026-10-19 (Orchestration) | `duckdb_writer` pool, 1 slot: 8 tasks, 0 overlapping pair |
 
 ## Run locally
 
@@ -87,6 +97,23 @@ builds in 0.78 s and the hourly fact (282 258 rows) in 0.73 s. Switch the hourly
 (`delete+insert` on the day, the rule `daily_load` already follows) when a full build exceeds
 5 minutes.
 
+## Lineage
+
+From `dbt/target/manifest.json` (dbt 1.12.5, generated 2026-10-19): 3 sources, 7 models,
+59 data tests, 1 unit test. Interactive graph: `dbt/target/static_index.html` (rebuilt by every
+`dbt_build` run, not versioned), opens directly in a browser.
+
+    sources (raw)                  staging (views)                       intermediate (table)          marts (tables, contracts)
+    raw.gbfs_station_status ─────► stg_gbfs_station_status [6] ─────┬──► int_station_status_5min [5] ─┬──► fct_station_availability_hourly [16 + 1 unit]
+    raw.velib_grid_2026_07 ──────► stg_velib_grid_2026_07 [7] ──────┤                                  ├──► fct_daily_coverage [10]
+    raw.gbfs_station_information ► stg_gbfs_station_information [6] │                                  └──► dim_station [9]
+                                                │                   └── (fallback station codes) ──────────► dim_station
+                                                └────────────────────────────────────────────────────────► dim_station
+
+[n] = data tests attached to the model. `dim_station` reads `int_station_status_5min`
+(first / last seen), `stg_gbfs_station_information` (attributes) and both snapshot staging models
+(fallback code). The hourly fact also references `dim_station` through its `relationships` test.
+
 ## Orchestration
 
     gbfs_snapshot (*/5) ──► landing/station_status ─┐
@@ -120,6 +147,10 @@ builds in 0.78 s and the hourly fact (282 258 rows) in 0.73 s. Switch the hourly
 - **Retries.** `daily_load`: 3 retries, 5 minutes apart (a DuckDB lock collision fails at once
   without damage; a later attempt finds the file free). `gbfs_snapshot`: 2 retries, 30 s apart,
   inside the 240 s guard. dbt tasks: none; the next load triggers a new build.
+- **`gbfs_snapshot` retries kept at 2 × 30 s after the DNS outage of 2026-10-18.** 3 × 60 s would
+  not have covered it: the 14:25 run would have made its last attempt around 14:28, while the
+  14:30 run was still failing at 14:31 (whether it would have saved 14:30 is not known). The next
+  capture, 5 minutes later, fills the gap; no added complexity for a case it would not cover.
 
 ## Known data gap: July 2026 raw JSON is lost
 
