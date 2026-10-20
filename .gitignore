@@ -28,6 +28,9 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
+# --- Private notes (interview prep, CV), never versioned ---
+docs/*_private.md
+
 # --- Assistant local settings (CLAUDE.md, the working rules, is versioned) ---
 .claude/
 
